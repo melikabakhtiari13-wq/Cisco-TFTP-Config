@@ -33,9 +33,15 @@ from datetime import datetime
 SEP_FILE_RE = re.compile(r"^SEP([0-9A-Fa-f]{12})\.cnf(\.xml)?$", re.IGNORECASE)
 HEX12_RE = re.compile(r"^[0-9A-F]{12}$")
 
-DEFAULT_LOG = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "config_activity.log"
-)
+def _app_dir():
+    """Folder of the script, or of the .exe when frozen by PyInstaller
+    (inside a one-file exe, __file__ points to a temp folder that is deleted on exit)."""
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(os.path.abspath(sys.executable))
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+DEFAULT_LOG = os.path.join(_app_dir(), "config_activity.log")
 ROOT_LOCATION = "."  # marker for "SEP files directly inside the model folder"
 
 
