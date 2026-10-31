@@ -1,13 +1,10 @@
 import os
 import re
-
-TFTP_ROOT = r"Z:\Public\USER\bakhtiari\new"
+import tkinter as tk
+from tkinter import filedialog, messagebox
 
 def format_mac(mac):
     return mac.replace(":", "").replace("-", "").replace(".", "").upper()
-
-def list_folders(path):
-    return sorted([f for f in os.listdir(path) if os.path.isdir(os.path.join(path, f))])
 
 def find_sample_file(folder_path):
     for file in os.listdir(folder_path):
@@ -22,46 +19,83 @@ def replace_mac_in_file(src_path, dest_path, old_mac, new_mac):
     with open(dest_path, "w", encoding="utf-8") as f:
         f.write(content)
 
-def main():
-    mac_input = input("Enter new MAC address: ")
-    new_mac = format_mac(mac_input)
+class CiscoConfigApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Cisco Config Generator")
+        self.tftp_path = ""
+        self.models = []
 
-    if len(new_mac) != 12:
-        print("⚠️  Warning: MAC address length is not 12 characters after cleaning. Proceeding anyway...")
+        # UI Elements
+        self.path_label = tk.Label(root, text="Select TFTP folder:")
+        self.path_label.pack()
 
-    # انتخاب مدل
-    models = list_folders(TFTP_ROOT)
-    if not models:
-        print("❌ No models found in the TFTP root.")
-        return
+        self.path_button = tk.Button(root, text="Browse Folder", command=self.browse_folder)
+        self.path_button.pack()
 
-    print("\nAvailable phone models:")
-    for i, model in enumerate(models):
-        print(f"{i + 1}. {model}")
+        self.model_listbox = tk.Listbox(root, height=8, width=50)
+        self.model_listbox.pack()
 
-    try:
-        model_index = int(input("Select a model (number): ")) - 1
-        model_folder = models[model_index]
-    except:
-        print("❌ Invalid model selection.")
-        return
+        self.mac_label = tk.Label(root, text="Enter new MAC address:")
+        self.mac_label.pack()
 
-    model_path = os.path.join(TFTP_ROOT, model_folder)
+        self.mac_entry = tk.Entry(root)
+        self.mac_entry.pack()
 
-    # پیدا کردن فایل نمونه فقط در مسیر مدل (نه نسخه‌ها)
-    sample_file = find_sample_file(model_path)
-    if not sample_file:
-        print("❌ No SEP config file found in selected model folder.")
-        return
+        self.generate_button = tk.Button(root, text="Generate Config File", command=self.generate_config)
+        self.generate_button.pack()
 
-    # ساخت فایل جدید
-    old_mac = re.findall(r"SEP([0-9A-Fa-f]{12})", os.path.basename(sample_file))[0].upper()
-    new_filename = os.path.basename(sample_file).replace(old_mac, new_mac)
-    new_file_path = os.path.join(model_path, new_filename)
+    def browse_folder(self):
+        path = filedialog.askdirectory()
+        if not path:
+            return
+        self.tftp_path = path
+        self.load_models()
 
-    replace_mac_in_file(sample_file, new_file_path, old_mac, new_mac)
+    def load_models(self):
+        self.model_listbox.delete(0, tk.END)
+        try:
+            self.models = [f for f in os.listdir(self.tftp_path) if os.path.isdir(os.path.join(self.tftp_path, f))]
+            for model in self.models:
+                self.model_listbox.insert(tk.END, model)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to load models: {e}")
 
-    print(f"\n✅ New config file created:\n- {new_file_path}")
+    def generate_config(self):
+        if not self.tftp_path:
+            messagebox.showerror("Error", "No TFTP path selected.")
+            return
 
+        mac_input = self.mac_entry.get().strip()
+        new_mac = format_mac(mac_input)
+        if len(new_mac) != 12:
+            messagebox.showwarning("Warning", "MAC format seems unusual, proceeding anyway...")
+
+        try:
+            selection = self.model_listbox.curselection()
+            if not selection:
+                messagebox.showerror("Error", "No model selected.")
+                return
+
+            selected_model = self.models[selection[0]]
+            model_path = os.path.join(self.tftp_path, selected_model)
+            sample_file = find_sample_file(model_path)
+            if not sample_file:
+                messagebox.showerror("Error", "No SEP config file found in selected folder.")
+                return
+
+            old_mac = re.findall(r"SEP([0-9A-Fa-f]{12})", os.path.basename(sample_file))[0].upper()
+            new_filename = os.path.basename(sample_file).replace(old_mac, new_mac)
+            new_file_path = os.path.join(model_path, new_filename)
+
+            replace_mac_in_file(sample_file, new_file_path, old_mac, new_mac)
+
+            messagebox.showinfo("Success", f"New config file created:\n{new_file_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to generate config: {e}")
+
+# اجرای برنامه
 if __name__ == "__main__":
-    main()
+    root = tk.Tk()
+    app = CiscoConfigApp(root)
+    root.mainloop()
