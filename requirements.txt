@@ -1,0 +1,12 @@
+# No third-party packages are needed: nothing to pip install.
+#
+# cisco_config_tool.py uses only the Python standard library:
+#   argparse, codecs, getpass, json, os, random, re, socket, struct, sys, datetime
+#   tkinter (GUI mode only)
+#
+# Requirements:
+#   Python >= 3.6   (developed/tested on Python 3.12)
+#   tkinter         only for the GUI. Included in the python.org installer for
+#                   Windows/macOS. Debian/Ubuntu: sudo apt install python3-tk
+#
+# Tests (no extra packages):  python -m unittest test_cisco_config_tool -v
